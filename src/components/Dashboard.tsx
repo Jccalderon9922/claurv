@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, Plus, Trash2, Globe, Lock, ArrowRight, Compass, CloudLightning, CloudOff, Share2, Bell, X, Shield } from 'lucide-react';
+import { LogOut, Plus, Trash2, Globe, Lock, ArrowRight, Compass, CloudLightning, CloudOff, Share2, Bell, X, Shield, User, Settings, Key } from 'lucide-react';
 import { resolvePanoramaUrl } from '../lib/clauRvDb';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
@@ -132,6 +132,14 @@ export default function Dashboard({ onOpenProject, onExitGuest, onOpenAdmin }: D
   const [showAddModal, setShowAddModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+
+  // Profile edit states
+  const [editFirstName, setEditFirstName] = useState(profile?.first_name || '');
+  const [editLastName, setEditLastName] = useState(profile?.last_name || '');
+  const [editPassword, setEditPassword] = useState('');
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
 
   // Form states
   const [newTitle, setNewTitle] = useState('');
@@ -362,6 +370,40 @@ export default function Dashboard({ onOpenProject, onExitGuest, onOpenAdmin }: D
     setTransfers(transfers.filter(t => t.id !== id));
   };
 
+  // ==========================================
+  // PROFILE UPDATE
+  // ==========================================
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsUpdatingProfile(true);
+    try {
+      if (!user || !profile) return;
+      
+      const updateData: any = { data: { first_name: editFirstName, last_name: editLastName } };
+      if (editPassword.trim()) {
+        updateData.password = editPassword;
+      }
+      
+      const { error: authError } = await supabase.auth.updateUser(updateData);
+      if (authError) throw authError;
+
+      const { error: dbError } = await supabase.from('user_profiles').update({
+        first_name: editFirstName,
+        last_name: editLastName
+      }).eq('id', user.id);
+      
+      if (dbError) throw dbError;
+
+      alert('Perfil actualizado exitosamente.');
+      setShowProfileModal(false);
+      setEditPassword('');
+      window.location.reload(); 
+    } catch (err: any) {
+      alert('Error actualizando perfil: ' + err.message);
+    } finally {
+      setIsUpdatingProfile(false);
+    }
+  };
 
   // ==========================================
   // RENDER LOGIC
@@ -424,10 +466,50 @@ export default function Dashboard({ onOpenProject, onExitGuest, onOpenAdmin }: D
               </>
             )}
 
-            <button onClick={() => { if (isGuest && onExitGuest) onExitGuest(); else logout(); }} className="flex items-center gap-1.5 px-4 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl font-bold text-sm transition">
-              <LogOut className="w-4 h-4" />
-              <span className="hidden sm:inline">{isGuest ? 'Iniciar Sesión' : 'Salir'}</span>
-            </button>
+            {isGuest ? (
+              <button onClick={onExitGuest} className="flex items-center gap-1.5 px-4 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl font-bold text-sm transition">
+                <LogOut className="w-4 h-4" />
+                <span className="hidden sm:inline">Iniciar Sesión</span>
+              </button>
+            ) : (
+              <div className="relative">
+                <button 
+                  onClick={() => setShowProfileMenu(!showProfileMenu)}
+                  className="flex items-center gap-2 pl-2 pr-3 py-1.5 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl font-bold text-sm transition"
+                >
+                  <div className="w-7 h-7 bg-amber-100 text-amber-700 rounded-lg flex items-center justify-center text-xs font-black">
+                    {profile?.first_name?.charAt(0) || 'U'}
+                  </div>
+                  <span className="hidden sm:inline max-w-[100px] truncate">{profile?.first_name}</span>
+                </button>
+
+                {showProfileMenu && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setShowProfileMenu(false)}></div>
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-xl border border-amber-900/5 z-50 overflow-hidden py-1">
+                      <div className="px-4 py-3 border-b border-slate-100">
+                        <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Conectado como</p>
+                        <p className="text-sm font-bold text-slate-800 truncate mt-0.5">{profile?.first_name} {profile?.last_name}</p>
+                      </div>
+                      
+                      <button 
+                        onClick={() => { setShowProfileMenu(false); setShowProfileModal(true); }}
+                        className="w-full text-left px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 flex items-center gap-2 font-semibold transition"
+                      >
+                        <Settings className="w-4 h-4" /> Configuración
+                      </button>
+                      
+                      <button 
+                        onClick={logout}
+                        className="w-full text-left px-4 py-2.5 text-sm text-rose-600 hover:bg-rose-50 flex items-center gap-2 font-semibold transition border-t border-slate-100"
+                      >
+                        <LogOut className="w-4 h-4" /> Cerrar Sesión
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -625,6 +707,56 @@ export default function Dashboard({ onOpenProject, onExitGuest, onOpenAdmin }: D
                 ))}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================== */}
+      {/* MODAL: PROFILE EDIT */}
+      {/* ========================================== */}
+      {showProfileModal && (
+        <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl border border-amber-900/5 max-w-md w-full p-8 relative">
+            <h3 className="text-xl font-bold text-slate-800 mb-2">Mi Perfil</h3>
+            <p className="text-sm text-slate-500 mb-6">Actualiza tu información personal o cambia tu contraseña.</p>
+
+            <form onSubmit={handleUpdateProfile} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Nombres</label>
+                <div className="relative rounded-xl shadow-sm">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <User className="h-4 w-4" />
+                  </div>
+                  <input type="text" required value={editFirstName} onChange={(e) => setEditFirstName(e.target.value)} className="block w-full pl-10 pr-4 py-3 bg-[#FAF6F0]/40 border border-slate-200 rounded-xl outline-none focus:border-amber-500 text-slate-800 text-sm" />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Apellidos</label>
+                <div className="relative rounded-xl shadow-sm">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <User className="h-4 w-4" />
+                  </div>
+                  <input type="text" required value={editLastName} onChange={(e) => setEditLastName(e.target.value)} className="block w-full pl-10 pr-4 py-3 bg-[#FAF6F0]/40 border border-slate-200 rounded-xl outline-none focus:border-amber-500 text-slate-800 text-sm" />
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Nueva Contraseña (Opcional)</label>
+                <div className="relative rounded-xl shadow-sm">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <Key className="h-4 w-4" />
+                  </div>
+                  <input type="password" placeholder="Mínimo 6 caracteres" value={editPassword} onChange={(e) => setEditPassword(e.target.value)} className="block w-full pl-10 pr-4 py-3 bg-[#FAF6F0]/40 border border-slate-200 rounded-xl outline-none focus:border-amber-500 text-slate-800 text-sm" />
+                </div>
+                <p className="text-[10px] text-slate-400 mt-1">Déjalo en blanco si no deseas cambiarla.</p>
+              </div>
+
+              <div className="flex gap-3 justify-end pt-4 mt-2">
+                <button type="button" onClick={() => setShowProfileModal(false)} className="px-5 py-2.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-500 hover:bg-slate-50 transition" disabled={isUpdatingProfile}>Cancelar</button>
+                <button type="submit" className="px-6 py-2.5 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-sm font-bold shadow-lg shadow-amber-600/10 transition" disabled={isUpdatingProfile}>{isUpdatingProfile ? 'Guardando...' : 'Guardar Cambios'}</button>
+              </div>
+            </form>
           </div>
         </div>
       )}
