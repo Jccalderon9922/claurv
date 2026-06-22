@@ -47,4 +47,7 @@ export interface Project {
   scenes: Record<string, Scene>;
   defaultScene: string;
   mediaLibrary: MediaItem[];
+  owner_id?: string;
+  owner_name?: string;
+  collaborators?: string[];
 }

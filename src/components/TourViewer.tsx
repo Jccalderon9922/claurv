@@ -37,14 +37,18 @@ interface TourViewerProps {
 }
 
 export default function TourViewer({ project, onBack }: TourViewerProps) {
-  const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  const { user, profile } = useAuth();
+  const isAdmin = profile?.role === 'admin';
+  const isOwner = project.owner_id === user?.id;
+  const isCollaborator = project.collaborators?.includes(user?.id || '');
+  const canEdit = !!user && (isAdmin || isOwner || isCollaborator);
+  
   const cloudActive = isSupabaseConfigured();
 
   const [activeProject, setActiveProject] = useState<Project>(project);
   const [currentSceneId, setCurrentSceneId] = useState<string>(project.defaultScene || Object.keys(project.scenes)[0] || '');
   const [currentPanoramaUrl, setCurrentPanoramaUrl] = useState('');
-  const [isEditMode, setIsEditMode] = useState(isAdmin);
+  const [isEditMode, setIsEditMode] = useState(canEdit);
   const [isLoading, setIsLoading] = useState(false);
   
   const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
@@ -370,7 +374,7 @@ export default function TourViewer({ project, onBack }: TourViewerProps) {
     <div className="flex h-screen bg-[#000] text-slate-300 font-sans overflow-hidden">
       
       {/* SIDEBAR - DARK THEME */}
-      {isAdmin && isEditMode && (
+      {canEdit && isEditMode && (
         <div className="w-[340px] bg-[#1a1a1a] border-r border-[#333] flex flex-col z-20 shrink-0 shadow-2xl">
           <div className="p-4 border-b border-[#333]">
             <button onClick={onBack} className="flex items-center gap-2 text-slate-400 hover:text-white transition text-xs font-bold uppercase tracking-wider mb-4">
@@ -458,7 +462,7 @@ export default function TourViewer({ project, onBack }: TourViewerProps) {
 
       {/* MAIN VIEWER */}
       <div className="flex-1 relative bg-black">
-        {!isEditMode && isAdmin && (
+        {!isEditMode && canEdit && (
           <button
             onClick={() => setIsEditMode(true)}
             className="absolute top-4 right-4 z-40 px-4 py-2 bg-[#E91E63] text-white rounded-lg text-xs font-bold flex items-center gap-2 shadow-lg shadow-[#E91E63]/20"
@@ -467,7 +471,7 @@ export default function TourViewer({ project, onBack }: TourViewerProps) {
           </button>
         )}
         
-        {(!isEditMode || !isAdmin) && (
+        {(!isEditMode || !canEdit) && (
           <button
             onClick={onBack}
             className="absolute top-4 left-4 z-40 px-4 py-2 bg-[#1a1a1a]/80 backdrop-blur text-white border border-[#333] rounded-lg text-xs font-bold flex items-center gap-2"

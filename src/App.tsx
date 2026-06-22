@@ -5,12 +5,21 @@ import Dashboard from './components/Dashboard';
 import type { Project } from './types/project';
 import TourViewer from './components/TourViewer';
 import MediaManager from './components/MediaManager';
+import AdminPanel from './components/AdminPanel';
 
 function AppContent() {
-  const { user } = useAuth();
+  const { user, profile, isLoading } = useAuth();
   const [activeProject, setActiveProject] = useState<Project | null>(null);
-  const [viewMode, setViewMode] = useState<'dashboard' | 'media' | 'editor'>('dashboard');
+  const [viewMode, setViewMode] = useState<'dashboard' | 'media' | 'editor' | 'admin'>('dashboard');
   const [isGuest, setIsGuest] = useState(false);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#FAF6F0] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600"></div>
+      </div>
+    );
+  }
 
   // If user is not logged in and hasn't chosen guest mode, show login page
   if (!user && !isGuest) {
@@ -20,6 +29,11 @@ function AppContent() {
         onGuest={() => setIsGuest(true)} 
       />
     );
+  }
+
+  // If user is admin and wants to see admin panel
+  if (viewMode === 'admin' && profile?.role === 'admin') {
+    return <AdminPanel onBack={() => setViewMode('dashboard')} />;
   }
 
   // If user has opened a specific project
@@ -94,6 +108,7 @@ function AppContent() {
         setViewMode(isGuest ? 'editor' : 'media');
       }} 
       onExitGuest={() => setIsGuest(false)}
+      onOpenAdmin={() => setViewMode('admin')}
     />
   );
 }
