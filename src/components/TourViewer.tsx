@@ -23,7 +23,7 @@ function SceneThumbnail({ url, type }: { url: string, type: '360'|'flat' }) {
 
   return (
     <div className="w-12 h-8 bg-[#111] rounded overflow-hidden shrink-0 relative border border-[#444]">
-      {src ? <img src={src} className="w-full h-full object-cover" alt="thumb" /> : <div className="w-full h-full animate-pulse bg-[#222]" />}
+      {src ? <img src={src} crossOrigin="anonymous" className="w-full h-full object-cover" alt="thumb" /> : <div className="w-full h-full animate-pulse bg-[#222]" />}
       <div className="absolute top-0 left-0 bg-black/60 p-0.5">
         {type === 'flat' ? <ImageIcon className="w-2.5 h-2.5 text-blue-400" /> : <Box className="w-2.5 h-2.5 text-[#E91E63]" />}
       </div>
@@ -137,7 +137,7 @@ export default function TourViewer({ project, onBack }: TourViewerProps) {
 
     const config = {
       type: 'equirectangular',
-      panorama: currentPanoramaUrl,
+      panorama: currentPanoramaUrl.startsWith('blob:') ? currentPanoramaUrl : `${currentPanoramaUrl}?v=${Date.now()}`,
       autoLoad: true,
       showControls: false,
       compass: false,
@@ -487,6 +487,7 @@ export default function TourViewer({ project, onBack }: TourViewerProps) {
               <img 
                 ref={flatImageRef}
                 src={currentPanoramaUrl} 
+                crossOrigin="anonymous"
                 alt="Plano" 
                 className="max-w-full max-h-full object-contain cursor-crosshair"
                 onClick={handleFlatImageClick}
