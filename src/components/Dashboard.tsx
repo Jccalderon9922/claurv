@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, Plus, Trash2, Globe, Lock, ArrowRight, Compass, CloudLightning, CloudOff, Share2, Bell, Check, X, Shield } from 'lucide-react';
-import { resolvePanoramaUrl, deletePanoramaBlob } from '../lib/clauRvDb';
+import { LogOut, Plus, Trash2, Globe, Lock, ArrowRight, Compass, CloudLightning, CloudOff, Share2, Bell, X, Shield } from 'lucide-react';
+import { resolvePanoramaUrl } from '../lib/clauRvDb';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 import type { Project } from '../types/project';
