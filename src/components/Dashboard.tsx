@@ -121,7 +121,7 @@ export default function Dashboard({ onOpenProject, onExitGuest, onOpenAdmin }: D
   
   const isGuest = !user;
   const isAdmin = profile?.role === 'admin';
-  const isCreator = profile?.role === 'creator';
+  const isCreator = profile?.role === 'creator' || (profile?.role as any) === 'user';
   const canCreate = isAdmin || isCreator;
 
   const [projects, setProjects] = useState<Project[]>([]);
@@ -431,7 +431,7 @@ export default function Dashboard({ onOpenProject, onExitGuest, onOpenAdmin }: D
             <div>
               <h1 className="text-xl font-bold text-slate-800 leading-none">CLAUVR 360°</h1>
               <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mt-0.5">
-                {isGuest ? 'Modo Visitante' : (isAdmin ? 'Administrador' : 'Usuario')}
+                {isGuest ? 'Modo Visitante' : (isAdmin ? 'Administrador' : (isCreator ? 'Editor' : 'Visualizador'))}
               </span>
             </div>
           </div>
