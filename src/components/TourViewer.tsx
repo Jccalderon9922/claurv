@@ -131,15 +131,22 @@ export default function TourViewer({ project, onBack }: TourViewerProps) {
 
     setIsLoading(true);
 
-    const config = {
-      type: 'equirectangular',
-      panorama: currentPanoramaUrl.startsWith('blob:') ? currentPanoramaUrl : `${currentPanoramaUrl}?v=${Date.now()}`,
-      autoLoad: true,
-      showControls: false,
-      compass: false,
-      keyboardZoom: true,
-      mouseZoom: true,
-      hotSpots: (sceneData.hotSpots || []).map((hs, index) => ({
+    let initTimeout: ReturnType<typeof setTimeout>;
+    
+    if (sceneData.type !== 'flat') {
+      initTimeout = setTimeout(() => {
+        if (!containerRef.current) return;
+        
+        try {
+          const config = {
+            type: 'equirectangular',
+            panorama: currentPanoramaUrl.startsWith('blob:') ? currentPanoramaUrl : `${currentPanoramaUrl}?v=${Date.now()}`,
+            autoLoad: true,
+            showControls: false,
+            compass: false,
+            keyboardZoom: true,
+            mouseZoom: true,
+            hotSpots: (sceneData.hotSpots || []).map((hs, index) => ({
         pitch: hs.pitch,
         yaw: hs.yaw,
         cssClass: 'custom-hotspot',
@@ -212,23 +219,110 @@ export default function TourViewer({ project, onBack }: TourViewerProps) {
               
               <div className="hotspot-tooltip" style={{ transform: is3DFloor ? `scale(${1 / (hs.scale || 1)}) translateX(-50%) translateY(-10px)` : '' }}>
                 {hs.text || 'Marcador'}
-                {isEditMode && <span className="block text-[9px] text-[#E91E63] font-bold mt-1">Clic para editar</span>}
-              </div>
-            </div>
-          );
-        }
-      }))
-    };
+    const initTimeout = setTimeout(() => {
+      if (!containerRef.current) return;
+      try {
+        const config = {
+          type: 'equirectangular',
+          panorama: currentPanoramaUrl.startsWith('blob:') ? currentPanoramaUrl : `${currentPanoramaUrl}?v=${Date.now()}`,
+          autoLoad: true,
+          showControls: false,
+          compass: false,
+          keyboardZoom: true,
+          mouseZoom: true,
+          hotSpots: (sceneData.hotSpots || []).map((hs, index) => ({
+            pitch: hs.pitch,
+            yaw: hs.yaw,
+            cssClass: 'custom-hotspot',
+            createTooltipFunc: (hotSpotDiv: HTMLDivElement) => {
+              const root = createRoot(hotSpotDiv);
+              let IconComponent = Info;
+              if (hs.iconType === 'image') IconComponent = ImageIcon;
+              if (hs.iconType === 'arrow') IconComponent = LinkIcon;
+              if (hs.iconType === 'comment') IconComponent = MessageSquare;
+              if (hs.iconType === 'pin' || hs.iconType === 'location') IconComponent = MapPin;
+              if (hs.iconType === 'compass') IconComponent = Compass;
+              if (hs.iconType === 'camera') IconComponent = Camera;
+              if (hs.iconType === 'play') IconComponent = Play;
+              if (hs.iconType === 'floor-circle') IconComponent = CircleDot;
+              if (hs.iconType === 'floor-arrow') IconComponent = ArrowUpCircle; 
 
-    const timer = setTimeout(() => {
-      if (containerRef.current) {
+              const is3DFloor = hs.iconType === 'floor-circle' || hs.iconType === 'floor-arrow';
+              const animClass = hs.animation === 'pulse' ? 'anim-pulse' : (hs.animation === 'float' ? 'anim-float' : '');
+              const classNames = `hotspot-content ${is3DFloor ? 'hotspot-floor-3d' : ''} ${animClass} ${isEditMode ? 'ring-2 ring-[#E91E63]' : ''}`;
+
+              root.render(
+                <div 
+                  className={classNames}
+                  style={{
+                    backgroundColor: is3DFloor ? 'transparent' : (hs.iconColor || '#E91E63'),
+                    color: is3DFloor ? (hs.iconColor || '#E91E63') : 'white',
+                    transform: is3DFloor ? undefined : `scale(${hs.scale || 1})`,
+                    opacity: hs.opacity ?? 1
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (isEditMode) {
+                      setEditingHotspotIndex(index);
+                      setHotspotPitch(hs.pitch);
+                      setHotspotYaw(hs.yaw);
+                      setHotspotType(hs.type);
+                      setHotspotTitle(hs.text || '');
+                      setHotspotText(hs.text || '');
+                      setHotspotIcon(hs.iconType || 'info');
+                      setHotspotColor(hs.iconColor || '#E91E63');
+                      setHotspotAnimation(hs.animation || 'none');
+                      setHotspotScale(hs.scale || 1);
+                      setHotspotOpacity(hs.opacity ?? 1);
+                      setHotspotMediaUrl((hs as any).mediaUrl || '');
+                      setHotspotTargetScene(hs.sceneId || '');
+                      setIsHotspotModalOpen(true);
+                    } else {
+                      if (hs.type === 'scene' && hs.sceneId) setCurrentSceneId(hs.sceneId);
+                      else if (hs.type === 'media' && (hs as any).mediaUrl) setSelectedMedia((hs as any).mediaUrl);
+                      else if (hs.type === 'info' && hs.text) setInfoPopup({ title: 'Info', text: hs.text });
+                    }
+                  }}
+                >
+                  {is3DFloor ? (
+                    hs.iconType === 'floor-circle' ? (
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-full h-full drop-shadow-lg" style={{ transform: `scale(${hs.scale || 1})` }}>
+                        <ellipse cx="12" cy="12" rx="10" ry="4.5" />
+                        <circle cx="12" cy="12" r="2" fill="currentColor" />
+                      </svg>
+                    ) : (
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-full h-full drop-shadow-lg" style={{ transform: `scale(${hs.scale || 1})` }}>
+                        <path d="M12 21V3" />
+                        <path d="m5 10 7-7 7 7" />
+                      </svg>
+                    )
+                  ) : (
+                    <IconComponent size={20} className="drop-shadow-md" />
+                  )}
+                  
+                  <div className="hotspot-tooltip" style={{ transform: is3DFloor ? `scale(${1 / (hs.scale || 1)}) translateX(-50%) translateY(-10px)` : '' }}>
+                    {hs.text || 'Marcador'}
+                    {isEditMode && <span className="block text-[9px] text-[#E91E63] font-bold mt-1">Clic para editar</span>}
+                  </div>
+                </div>
+              );
+            }
+          }))
+        };
+
         viewerRef.current = window.pannellum.viewer(containerRef.current, config);
         viewerRef.current.on('load', () => setIsLoading(false));
+        viewerRef.current.on('error', (err: any) => {
+          console.error('Pannellum error:', err);
+          setIsLoading(false);
+        });
+      } catch (err) {
+        console.error("Error initializing Pannellum:", err);
       }
-    }, 100);
+    }, 50);
 
     return () => {
-      clearTimeout(timer);
+      clearTimeout(initTimeout);
       if (viewerRef.current) {
         viewerRef.current.destroy();
         viewerRef.current = null;
@@ -338,7 +432,6 @@ export default function TourViewer({ project, onBack }: TourViewerProps) {
         hotSpots: []
       };
       
-      // Also add to media library seamlessly
       const newItem: MediaItem = {
         id: `media-${Date.now()}`,
         name: file.name,
@@ -457,7 +550,7 @@ export default function TourViewer({ project, onBack }: TourViewerProps) {
       )}
 
       {/* MAIN VIEWER */}
-      <div className="flex-1 relative bg-black">
+      <div className="flex-1 relative bg-[#0B0F19]">
         {!isEditMode && canEdit && (
           <button
             onClick={() => setIsEditMode(true)}
@@ -476,98 +569,100 @@ export default function TourViewer({ project, onBack }: TourViewerProps) {
           </button>
         )}
 
-        {currentSceneData?.type === 'flat' ? (
-          // FLAT IMAGE VIEWER
-          <div className="w-full h-full relative overflow-auto bg-[#111] flex items-center justify-center">
-            <div className="relative inline-block max-w-full max-h-full">
-              <img 
-                ref={flatImageRef}
-                src={currentPanoramaUrl} 
-                crossOrigin="anonymous"
-                alt="Plano" 
-                className="max-w-full max-h-full object-contain cursor-crosshair"
-                onClick={handleFlatImageClick}
-              />
-              {/* Render Flat Hotspots */}
-              {(currentSceneData.hotSpots || []).map((hs, index) => {
-                const is3DFloor = hs.iconType === 'floor-circle' || hs.iconType === 'floor-arrow';
-                let IconComponent = Info;
-                if (hs.iconType === 'image') IconComponent = ImageIcon;
-                if (hs.iconType === 'arrow') IconComponent = LinkIcon;
-                if (hs.iconType === 'comment') IconComponent = MessageSquare;
-                if (hs.iconType === 'pin' || hs.iconType === 'location') IconComponent = MapPin;
-                if (hs.iconType === 'camera') IconComponent = Camera;
-                if (hs.iconType === 'floor-circle') IconComponent = CircleDot;
-                if (hs.iconType === 'floor-arrow') IconComponent = ArrowUpCircle;
+        {currentSceneData ? (
+          currentSceneData.type === 'flat' ? (
+            <div className="w-full h-full flex flex-col items-center justify-center p-8 bg-[#111]">
+              <div className="max-w-4xl w-full bg-[#1A1F2E] rounded-2xl overflow-hidden shadow-2xl border border-[#30363D]">
+                <img 
+                  ref={flatImageRef}
+                  src={currentPanoramaUrl} 
+                  crossOrigin="anonymous"
+                  alt="Plano" 
+                  className="w-full h-auto object-contain max-h-[70vh] cursor-crosshair"
+                  onClick={handleFlatImageClick}
+                />
+                {(currentSceneData.hotSpots || []).map((hs, index) => {
+                  const is3DFloor = hs.iconType === 'floor-circle' || hs.iconType === 'floor-arrow';
+                  let IconComponent = Info;
+                  if (hs.iconType === 'image') IconComponent = ImageIcon;
+                  if (hs.iconType === 'arrow') IconComponent = LinkIcon;
+                  if (hs.iconType === 'comment') IconComponent = MessageSquare;
+                  if (hs.iconType === 'pin' || hs.iconType === 'location') IconComponent = MapPin;
+                  if (hs.iconType === 'camera') IconComponent = Camera;
+                  if (hs.iconType === 'floor-circle') IconComponent = CircleDot;
+                  if (hs.iconType === 'floor-arrow') IconComponent = ArrowUpCircle;
+                  const animClass = hs.animation === 'pulse' ? 'anim-pulse' : (hs.animation === 'float' ? 'anim-float' : '');
 
-                const animClass = hs.animation === 'pulse' ? 'anim-pulse' : (hs.animation === 'float' ? 'anim-float' : '');
-
-                return (
-                  <div 
-                    key={index}
-                    className={`absolute flex flex-col items-center justify-center transform -translate-x-1/2 -translate-y-1/2 cursor-pointer group ${isEditMode ? 'hover:scale-110' : ''}`}
-                    style={{ top: `${hs.pitch}%`, left: `${hs.yaw}%` }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (isEditMode) {
-                        setEditingHotspotIndex(index);
-                        setHotspotPitch(hs.pitch);
-                        setHotspotYaw(hs.yaw);
-                        setHotspotType(hs.type);
-                        setHotspotText(hs.text || '');
-                        setHotspotIcon(hs.iconType || 'info');
-                        setHotspotColor(hs.iconColor || '#E91E63');
-                        setHotspotAnimation(hs.animation || 'none');
-                        setHotspotScale(hs.scale || 1);
-                        setHotspotOpacity(hs.opacity ?? 1);
-                        setHotspotTargetScene(hs.sceneId || '');
-                        setIsHotspotModalOpen(true);
-                      } else {
-                        if (hs.type === 'scene' && hs.sceneId) setCurrentSceneId(hs.sceneId);
-                        else if (hs.type === 'media' && (hs as any).mediaUrl) setSelectedMedia((hs as any).mediaUrl);
-                        else if (hs.type === 'info' && hs.text) setInfoPopup({ title: 'Info', text: hs.text });
-                      }
-                    }}
-                  >
+                  return (
                     <div 
-                      className={`flex items-center justify-center rounded-full shadow-lg ${isEditMode ? 'ring-2 ring-white/50' : ''} ${animClass} ${is3DFloor ? 'hotspot-floor-3d' : ''}`}
-                      style={{ 
-                        backgroundColor: is3DFloor ? 'transparent' : (hs.iconColor || '#E91E63'), 
-                        color: is3DFloor ? (hs.iconColor || '#E91E63') : 'white',
-                        transform: is3DFloor ? undefined : `scale(${hs.scale || 1})`,
-                        opacity: hs.opacity ?? 1,
-                        padding: is3DFloor ? '0' : '0.4rem'
+                      key={index}
+                      className={`absolute flex flex-col items-center justify-center transform -translate-x-1/2 -translate-y-1/2 cursor-pointer group ${isEditMode ? 'hover:scale-110' : ''}`}
+                      style={{ top: `${hs.pitch}%`, left: `${hs.yaw}%` }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (isEditMode) {
+                          setEditingHotspotIndex(index);
+                          setHotspotPitch(hs.pitch);
+                          setHotspotYaw(hs.yaw);
+                          setHotspotType(hs.type);
+                          setHotspotText(hs.text || '');
+                          setHotspotIcon(hs.iconType || 'info');
+                          setHotspotColor(hs.iconColor || '#E91E63');
+                          setHotspotAnimation(hs.animation || 'none');
+                          setHotspotScale(hs.scale || 1);
+                          setHotspotOpacity(hs.opacity ?? 1);
+                          setHotspotTargetScene(hs.sceneId || '');
+                          setIsHotspotModalOpen(true);
+                        } else {
+                          if (hs.type === 'scene' && hs.sceneId) setCurrentSceneId(hs.sceneId);
+                          else if (hs.type === 'media' && (hs as any).mediaUrl) setSelectedMedia((hs as any).mediaUrl);
+                          else if (hs.type === 'info' && hs.text) setInfoPopup({ title: 'Info', text: hs.text });
+                        }
                       }}
                     >
-                      {is3DFloor ? (
-                        hs.iconType === 'floor-circle' ? (
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-full h-full" style={{ transform: `scale(${hs.scale || 1})` }}>
-                            <ellipse cx="12" cy="12" rx="10" ry="4.5" />
-                            <circle cx="12" cy="12" r="2" fill="currentColor" />
-                          </svg>
+                      <div 
+                        className={`flex items-center justify-center rounded-full shadow-lg ${isEditMode ? 'ring-2 ring-white/50' : ''} ${animClass} ${is3DFloor ? 'hotspot-floor-3d' : ''}`}
+                        style={{ 
+                          backgroundColor: is3DFloor ? 'transparent' : (hs.iconColor || '#E91E63'), 
+                          color: is3DFloor ? (hs.iconColor || '#E91E63') : 'white',
+                          transform: is3DFloor ? undefined : `scale(${hs.scale || 1})`,
+                          opacity: hs.opacity ?? 1,
+                          padding: is3DFloor ? '0' : '0.4rem'
+                        }}
+                      >
+                        {is3DFloor ? (
+                          hs.iconType === 'floor-circle' ? (
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-full h-full" style={{ transform: `scale(${hs.scale || 1})` }}>
+                              <ellipse cx="12" cy="12" rx="10" ry="4.5" />
+                              <circle cx="12" cy="12" r="2" fill="currentColor" />
+                            </svg>
+                          ) : (
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-full h-full" style={{ transform: `scale(${hs.scale || 1})` }}>
+                              <path d="M12 21V3" />
+                              <path d="m5 10 7-7 7 7" />
+                            </svg>
+                          )
                         ) : (
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-full h-full" style={{ transform: `scale(${hs.scale || 1})` }}>
-                            <path d="M12 21V3" />
-                            <path d="m5 10 7-7 7 7" />
-                          </svg>
-                        )
-                      ) : (
-                        <IconComponent size={16} />
-                      )}
+                          <IconComponent size={16} />
+                        )}
+                      </div>
+                      <div className="absolute top-full mt-2 w-max bg-[#1a1a1a] text-white text-xs px-3 py-1.5 rounded-md border border-[#333] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-xl">
+                        {hs.text || 'Marcador'}
+                        {isEditMode && <span className="block text-[9px] text-[#E91E63] font-bold mt-1">Clic para editar</span>}
+                      </div>
                     </div>
-                    {/* Tooltip */}
-                    <div className="absolute top-full mt-2 w-max bg-[#1a1a1a] text-white text-xs px-3 py-1.5 rounded-md border border-[#333] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-xl">
-                      {hs.text || 'Marcador'}
-                      {isEditMode && <span className="block text-[9px] text-[#E91E63] font-bold mt-1">Clic para editar</span>}
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          ) : (
+            <div key={`scene-${currentSceneId}`} ref={containerRef} onClick={handlePanoramaClick} className="w-full h-full" id="pannellum-root" />
+          )
         ) : (
-          // PANNELLUM 360 VIEWER
-          <div ref={containerRef} onClick={handlePanoramaClick} className="w-full h-full" id="pannellum-root" />
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-500">
+            <Compass className="w-16 h-16 mb-4 opacity-20" />
+            <p className="text-lg font-medium">Selecciona una escena para visualizarla</p>
+          </div>
         )}
       </div>
 
