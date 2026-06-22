@@ -122,14 +122,10 @@ export default function TourViewer({ project, onBack }: TourViewerProps) {
     const sceneData = activeProject.scenes[currentSceneId];
     if (!containerRef.current || !window.pannellum || !currentPanoramaUrl || !sceneData || sceneData.type === 'flat') return;
 
-    const isMatching = sceneData.image.startsWith('indexeddb://')
-      ? currentPanoramaUrl.startsWith('blob:')
-      : currentPanoramaUrl === sceneData.image;
-
-    if (!isMatching) return;
-
     if (viewerRef.current) {
-      viewerRef.current.destroy();
+      try {
+        viewerRef.current.destroy();
+      } catch(e) {}
       viewerRef.current = null;
     }
 
