@@ -26,7 +26,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = async (userId: string, email?: string) => {
     try {
       const { data, error } = await supabase
         .from('user_profiles')
@@ -37,11 +37,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!error && data) {
         setProfile(data as UserProfile);
       } else {
-        setProfile(null);
+        // Auto-recover missing profile
+        const isDefaultAdmin = email === 'jccalderon@clubregatas.org.pe';
+        const fallback: UserProfile = {
+          id: userId,
+          email: email || '',
+          first_name: isDefaultAdmin ? 'Admin' : 'Usuario',
+          last_name: '',
+          role: isDefaultAdmin ? 'admin' : 'user',
+          status: isDefaultAdmin ? 'approved' : 'pending'
+        };
+        setProfile(fallback);
+        
+        // Attempt to heal database
+        supabase.from('user_profiles').insert(fallback).then();
       }
     } catch (err) {
       console.error('Error fetching profile', err);
       setProfile(null);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -50,7 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchProfile(session.user.id).then(() => setIsLoading(false));
+        fetchProfile(session.user.id, session.user.email);
       } else {
         setIsLoading(false);
       }
@@ -61,7 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session?.user ?? null);
       if (session?.user) {
         setIsLoading(true);
-        fetchProfile(session.user.id);
+        fetchProfile(session.user.id, session.user.email);
       } else {
         setProfile(null);
         setIsLoading(false);
