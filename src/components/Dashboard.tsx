@@ -151,15 +151,29 @@ export default function Dashboard({ onOpenProject, onExitGuest, onOpenAdmin }: D
       // or returns public projects for guests if we query without token, but guest logic handles via JS for safety)
       const { data, error } = await supabase
         .from('claurv_projects')
-        .select(`
-          *,
-          user_profiles (first_name, last_name)
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (error) {
         console.error('Supabase fetch error:', error);
       } else if (data) {
+        // Obtenemos los IDs de los dueños únicos
+        const ownerIds = [...new Set(data.map(p => p.owner_id))].filter(Boolean);
+        
+        let profilesMap: Record<string, string> = {};
+        if (ownerIds.length > 0) {
+          const { data: profs } = await supabase
+            .from('user_profiles')
+            .select('id, first_name, last_name')
+            .in('id', ownerIds);
+            
+          if (profs) {
+            profs.forEach(pr => {
+              profilesMap[pr.id] = `${pr.first_name} ${pr.last_name}`;
+            });
+          }
+        }
+
         const mapped: Project[] = data.map((p: any) => ({
           id: p.id,
           title: p.title,
@@ -171,7 +185,7 @@ export default function Dashboard({ onOpenProject, onExitGuest, onOpenAdmin }: D
           defaultScene: p.default_scene || Object.keys(p.scenes || {})[0] || '',
           mediaLibrary: p.media_library || [],
           owner_id: p.owner_id,
-          owner_name: p.user_profiles ? `${p.user_profiles.first_name} ${p.user_profiles.last_name}` : 'Usuario Anónimo',
+          owner_name: profilesMap[p.owner_id] || 'Usuario',
           collaborators: p.collaborators || []
         }));
         setProjects(mapped);
