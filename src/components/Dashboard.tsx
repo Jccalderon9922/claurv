@@ -569,7 +569,7 @@ export default function Dashboard({ onOpenProject, onExitGuest, onOpenAdmin }: D
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
                 {projects.map(project => {
                   const isOwner = project.owner_id === user?.id;
-                  const isCollaborator = project.collaborators?.includes(user?.id || '');
+                  const isCollaborator = project.collaborators?.includes(user?.id || '') ?? false;
                   const canEdit = isAdmin || ((isOwner || isCollaborator) && isCreator);
 
                   return (
