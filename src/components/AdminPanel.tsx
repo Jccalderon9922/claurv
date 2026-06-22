@@ -127,7 +127,7 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
                           </span>
                         ) : (
                           <select
-                            value={user.role === 'user' ? 'creator' : user.role}
+                            value={(user.role as string) === 'user' ? 'creator' : user.role}
                             onChange={(e) => updateRole(user.id, e.target.value as 'creator' | 'viewer')}
                             className="bg-[#FAF6F0] border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-slate-600 focus:outline-none focus:border-amber-500"
                           >
