@@ -39,9 +39,10 @@ interface TourViewerProps {
 export default function TourViewer({ project, onBack }: TourViewerProps) {
   const { user, profile } = useAuth();
   const isAdmin = profile?.role === 'admin';
+  const isCreator = profile?.role === 'creator';
   const isOwner = project.owner_id === user?.id;
   const isCollaborator = project.collaborators?.includes(user?.id || '');
-  const canEdit = !!user && (isAdmin || isOwner || isCollaborator);
+  const canEdit = !!user && (isAdmin || (isCreator && (isOwner || isCollaborator)));
   
   const cloudActive = isSupabaseConfigured();
 

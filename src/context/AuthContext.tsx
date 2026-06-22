@@ -7,7 +7,7 @@ export interface UserProfile {
   email: string;
   first_name: string;
   last_name: string;
-  role: 'admin' | 'user';
+  role: 'admin' | 'creator' | 'viewer';
   status: 'pending' | 'approved' | 'rejected';
 }
 
@@ -42,9 +42,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const fallback: UserProfile = {
           id: userId,
           email: email || '',
-          first_name: isDefaultAdmin ? 'Admin' : 'Usuario',
-          last_name: '',
-          role: isDefaultAdmin ? 'admin' : 'user',
+          first_name: user?.user_metadata?.first_name || '',
+          last_name: user?.user_metadata?.last_name || '',
+          role: isDefaultAdmin ? 'admin' : 'viewer',
           status: isDefaultAdmin ? 'approved' : 'pending'
         };
         setProfile(fallback);

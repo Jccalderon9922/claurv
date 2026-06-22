@@ -121,6 +121,8 @@ export default function Dashboard({ onOpenProject, onExitGuest, onOpenAdmin }: D
   
   const isGuest = !user;
   const isAdmin = profile?.role === 'admin';
+  const isCreator = profile?.role === 'creator';
+  const canCreate = isAdmin || isCreator;
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [transfers, setTransfers] = useState<any[]>([]);
@@ -413,10 +415,12 @@ export default function Dashboard({ onOpenProject, onExitGuest, onOpenAdmin }: D
                   </button>
                 )}
 
-                <button onClick={() => setShowAddModal(true)} className="flex items-center gap-1.5 px-4.5 py-2.5 bg-amber-600 hover:bg-amber-500 text-white rounded-xl font-bold text-sm transition-all shadow-lg shadow-amber-600/10">
-                  <Plus className="w-4 h-4" />
-                  <span className="hidden sm:inline">Nuevo Proyecto</span>
-                </button>
+                {canCreate && (
+                  <button onClick={() => setShowAddModal(true)} className="flex items-center gap-1.5 px-4.5 py-2.5 bg-amber-600 hover:bg-amber-500 text-white rounded-xl font-bold text-sm transition-all shadow-lg shadow-amber-600/10">
+                    <Plus className="w-4 h-4" />
+                    <span className="hidden sm:inline">Nuevo Proyecto</span>
+                  </button>
+                )}
               </>
             )}
 
@@ -484,7 +488,7 @@ export default function Dashboard({ onOpenProject, onExitGuest, onOpenAdmin }: D
                 {projects.map(project => {
                   const isOwner = project.owner_id === user?.id;
                   const isCollaborator = project.collaborators?.includes(user?.id || '');
-                  const canEdit = isOwner || isCollaborator || isAdmin;
+                  const canEdit = isAdmin || ((isOwner || isCollaborator) && isCreator);
 
                   return (
                     <ProjectCard

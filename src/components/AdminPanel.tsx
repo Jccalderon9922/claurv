@@ -41,6 +41,19 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
     }
   };
 
+  const updateRole = async (id: string, newRole: 'creator' | 'viewer') => {
+    const { error } = await supabase
+      .from('user_profiles')
+      .update({ role: newRole })
+      .eq('id', id);
+
+    if (error) {
+      alert('Error al actualizar el rol: ' + error.message);
+    } else {
+      setUsers(users.map(u => u.id === id ? { ...u, role: newRole as any } : u));
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'approved': return <span className="px-2 py-1 bg-emerald-100 text-emerald-800 text-xs rounded-full font-bold">Aprobado</span>;
@@ -112,7 +125,16 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
                           <span className="text-amber-600 font-bold flex items-center gap-1">
                             <Shield className="w-3.5 h-3.5" /> Admin
                           </span>
-                        ) : 'Usuario'}
+                        ) : (
+                          <select
+                            value={user.role}
+                            onChange={(e) => updateRole(user.id, e.target.value as 'creator' | 'viewer')}
+                            className="bg-[#FAF6F0] border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-slate-600 focus:outline-none focus:border-amber-500"
+                          >
+                            <option value="creator">Creador</option>
+                            <option value="viewer">Visualizador</option>
+                          </select>
+                        )}
                       </td>
                       <td className="p-4">{getStatusBadge(user.status)}</td>
                       <td className="p-4 text-right">

@@ -44,7 +44,7 @@ export default function Login({ onSuccess, onGuest }: LoginProps) {
 
         if (signUpError) throw signUpError;
         
-        setSuccessMsg('¡Registro exitoso! Tu cuenta está pendiente de aprobación por el administrador.');
+        setSuccessMsg('¡Registro exitoso! Podrá ingresar cuando su cuenta sea validada.');
         setIsRegistering(false);
         setPassword('');
       } else {
@@ -66,7 +66,7 @@ export default function Login({ onSuccess, onGuest }: LoginProps) {
 
           if (profileData?.status === 'pending') {
             await supabase.auth.signOut();
-            throw new Error('Tu cuenta aún está pendiente de aprobación. Intenta más tarde.');
+            throw new Error('Todavía no es validado su ingreso, pronto se le brindará el acceso.');
           } else if (profileData?.status === 'rejected') {
             await supabase.auth.signOut();
             throw new Error('Tu cuenta ha sido denegada.');
