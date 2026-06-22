@@ -153,7 +153,7 @@ export default function Dashboard({ onOpenProject, onExitGuest, onOpenAdmin }: D
         .from('claurv_projects')
         .select(`
           *,
-          user_profiles!claurv_projects_owner_id_fkey(first_name, last_name)
+          user_profiles (first_name, last_name)
         `)
         .order('created_at', { ascending: false });
 
