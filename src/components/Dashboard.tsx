@@ -443,12 +443,12 @@ export default function Dashboard({ onOpenProject, onExitGuest, onOpenAdmin }: D
 
             {!isGuest && (
               <>
-                {transfers.length > 0 && (
-                  <button onClick={() => setShowNotifications(true)} className="relative p-2.5 text-slate-600 hover:bg-slate-100 rounded-xl transition">
-                    <Bell className="w-5 h-5" />
+                <button onClick={() => setShowNotifications(true)} className="relative p-2.5 text-slate-600 hover:bg-slate-100 rounded-xl transition">
+                  <Bell className="w-5 h-5" />
+                  {transfers.length > 0 && (
                     <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 rounded-full animate-pulse border-2 border-white"></span>
-                  </button>
-                )}
+                  )}
+                </button>
 
                 {isAdmin && onOpenAdmin && (
                   <button onClick={onOpenAdmin} className="flex items-center gap-1.5 px-3.5 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl font-bold text-sm transition-all border border-indigo-200">

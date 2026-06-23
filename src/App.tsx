@@ -104,8 +104,7 @@ function AppContent() {
     <Dashboard 
       onOpenProject={(project) => {
         setActiveProject(project);
-        // Guests bypass media manager
-        setViewMode(isGuest ? 'editor' : 'media');
+        setViewMode('editor');
       }} 
       onExitGuest={() => setIsGuest(false)}
       onOpenAdmin={() => setViewMode('admin')}
