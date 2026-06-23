@@ -214,7 +214,6 @@ export default function TourViewer({ project, onBack }: TourViewerProps) {
           type: 'equirectangular',
           panorama: currentPanoramaUrl.startsWith('blob:') ? currentPanoramaUrl : `${currentPanoramaUrl}?v=${Date.now()}`,
           autoLoad: true,
-          dynamic: true, // Forces Pannellum to skip aggressive static texture downsizing
           hfov: 90,
           minHfov: 50,
           maxHfov: 110,
