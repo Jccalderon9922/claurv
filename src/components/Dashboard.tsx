@@ -212,7 +212,7 @@ export default function Dashboard({ onOpenProject, onExitGuest, onOpenAdmin }: D
         const { data: tData } = await supabase
           .from('project_transfers')
           .select('*')
-          .eq('receiver_email', user.email)
+          .eq('receiver_email', user.email?.toLowerCase())
           .eq('status', 'pending');
         
         if (tData) setTransfers(tData);
