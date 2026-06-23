@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import type { Project, Hotspot, MediaItem } from '../types/project';
 import { 
-  ArrowLeft, Eye, Edit3, Plus, Trash2, 
+  ArrowLeft, Eye, Edit3, Plus, Trash2, EyeOff, Home,
   Info, Image as ImageIcon, Link as LinkIcon, MessageSquare, 
   MapPin, Compass, Camera, Play, CircleDot, Box, UploadCloud, ChevronDown, ArrowUpCircle, Folder, FolderPlus, Check, X
 } from 'lucide-react';
@@ -85,10 +85,76 @@ export default function TourViewer({ project, onBack }: TourViewerProps) {
   const [selectedMedia, setSelectedMedia] = useState<string | null>(null);
   const [infoPopup, setInfoPopup] = useState<{ title: string; text: string } | null>(null);
 
+  // Scene Editing State
+  const [editingSceneId, setEditingSceneId] = useState<string | null>(null);
+  const [editSceneName, setEditSceneName] = useState('');
+  
+  // Drag and drop state
+  const [draggedSceneId, setDraggedSceneId] = useState<string | null>(null);
+  const [dragOverSceneId, setDragOverSceneId] = useState<string | null>(null);
+
   // Pannellum references
   const viewerRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const flatImageRef = useRef<HTMLImageElement>(null);
+
+  const handleRenameSceneSubmit = (id: string) => {
+    if (editSceneName.trim()) {
+      const up = { ...activeProject };
+      up.scenes[id].title = editSceneName.trim();
+      saveProjectChanges(up);
+    }
+    setEditingSceneId(null);
+  };
+
+  const handleToggleVisibility = (id: string) => {
+    const up = { ...activeProject };
+    up.scenes[id].isHidden = !up.scenes[id].isHidden;
+    saveProjectChanges(up);
+  };
+
+  const handleSetDefaultScene = (id: string) => {
+    const up = { ...activeProject };
+    up.defaultScene = id;
+    saveProjectChanges(up);
+  };
+
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    e.dataTransfer.effectAllowed = 'move';
+    setDraggedSceneId(id);
+  };
+
+  const handleDragOver = (e: React.DragEvent, id: string) => {
+    e.preventDefault();
+    setDragOverSceneId(id);
+  };
+
+  const handleDrop = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    setDragOverSceneId(null);
+    if (!draggedSceneId || draggedSceneId === targetId) return;
+
+    const filteredIds = Object.entries(activeProject.scenes)
+      .filter(([_, s]) => activeAlbum === 'Todas' ? true : s.album === activeAlbum || (!s.album && activeAlbum === 'General'))
+      .sort((a, b) => (a[1].order || 0) - (b[1].order || 0))
+      .map(([id]) => id);
+      
+    const draggedIndex = filteredIds.indexOf(draggedSceneId);
+    const targetIndex = filteredIds.indexOf(targetId);
+    
+    if (draggedIndex === -1 || targetIndex === -1) return;
+
+    filteredIds.splice(draggedIndex, 1);
+    filteredIds.splice(targetIndex, 0, draggedSceneId);
+
+    const up = { ...activeProject };
+    filteredIds.forEach((id, idx) => {
+      up.scenes[id].order = idx;
+    });
+    
+    saveProjectChanges(up);
+    setDraggedSceneId(null);
+  };
 
   const saveProjectChanges = async (updated: Project) => {
     setActiveProject(updated);
@@ -429,7 +495,7 @@ export default function TourViewer({ project, onBack }: TourViewerProps) {
   const filteredScenes = Object.entries(activeProject.scenes).filter(([_id, sc]) => {
     if (activeAlbum === 'Todas') return true;
     return sc.album === activeAlbum || (!sc.album && activeAlbum === 'General');
-  });
+  }).sort((a, b) => (a[1].order || 0) - (b[1].order || 0));
 
   return (
     <div className="flex h-screen bg-[#000] text-slate-300 font-sans overflow-hidden">
@@ -522,23 +588,62 @@ export default function TourViewer({ project, onBack }: TourViewerProps) {
               {filteredScenes.map(([id, sc]) => (
                 <div
                   key={id}
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, id)}
+                  onDragOver={(e) => handleDragOver(e, id)}
+                  onDrop={(e) => handleDrop(e, id)}
                   onClick={() => id !== currentSceneId && setCurrentSceneId(id)}
                   className={`flex flex-col p-2 rounded-lg border cursor-pointer transition ${
                     id === currentSceneId
                       ? 'bg-[#333] border-[#555] text-white font-bold shadow-lg'
                       : 'bg-[#1a1a1a] border-[#333] text-slate-400 hover:bg-[#222]'
-                  }`}
+                  } ${dragOverSceneId === id ? 'border-t-2 border-t-[#E91E63]' : ''} ${sc.isHidden ? 'opacity-50' : ''}`}
                 >
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3 truncate pr-2">
+                    <div className="flex items-center gap-3 truncate pr-2 w-full">
                       <SceneThumbnail url={sc.image} type={sc.type as any} />
-                      <div className="flex flex-col">
-                        <span className="truncate text-sm leading-tight">{sc.title}</span>
+                      <div className="flex flex-col flex-1 min-w-0">
+                        {editingSceneId === id ? (
+                          <input
+                            autoFocus
+                            type="text"
+                            value={editSceneName}
+                            onChange={e => setEditSceneName(e.target.value)}
+                            onBlur={() => handleRenameSceneSubmit(id)}
+                            onKeyDown={e => e.key === 'Enter' && handleRenameSceneSubmit(id)}
+                            onClick={e => e.stopPropagation()}
+                            className="w-full bg-[#111] text-white px-1 py-0.5 rounded text-sm outline-none border border-[#E91E63]"
+                          />
+                        ) : (
+                          <span 
+                            onDoubleClick={(e) => { e.stopPropagation(); setEditingSceneId(id); setEditSceneName(sc.title); }}
+                            className="truncate text-sm leading-tight hover:text-white transition"
+                            title="Doble clic para renombrar"
+                          >
+                            {sc.title}
+                          </span>
+                        )}
                         <span className="text-[10px] text-slate-500 font-normal mt-0.5">{sc.album || 'General'}</span>
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-1 relative">
+                    <div className="flex items-center gap-1 relative shrink-0">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleSetDefaultScene(id); }}
+                        className={`p-1.5 rounded transition ${activeProject.defaultScene === id ? 'text-amber-400 hover:bg-amber-400/20' : 'text-slate-600 hover:text-white hover:bg-[#444]'}`}
+                        title={activeProject.defaultScene === id ? 'Escena Principal' : 'Establecer como Principal'}
+                      >
+                        <Home className="w-3.5 h-3.5" />
+                      </button>
+
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleToggleVisibility(id); }}
+                        className={`p-1.5 rounded transition ${sc.isHidden ? 'text-slate-500 hover:text-white hover:bg-[#444]' : 'text-slate-400 hover:text-white hover:bg-[#444]'}`}
+                        title={sc.isHidden ? 'Mostrar a visitantes' : 'Ocultar a visitantes'}
+                      >
+                        {sc.isHidden ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+
                       <button
                         onClick={(e) => {
                           e.stopPropagation();

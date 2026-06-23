@@ -27,6 +27,8 @@ export interface Scene {
   type: '360' | 'flat';
   hotSpots: Hotspot[];
   album?: string;
+  isHidden?: boolean;
+  order?: number;
 }
 
 export interface MediaItem {
