@@ -4,7 +4,7 @@ import type { Project, Hotspot, MediaItem } from '../types/project';
 import { 
   ArrowLeft, Eye, Edit3, Plus, Trash2, 
   Info, Image as ImageIcon, Link as LinkIcon, MessageSquare, 
-  MapPin, Compass, Camera, Play, CircleDot, Box, UploadCloud, ChevronDown, ArrowUpCircle, Folder, FolderPlus, MoreVertical, Check, X
+  MapPin, Compass, Camera, Play, CircleDot, Box, UploadCloud, ChevronDown, ArrowUpCircle, Folder, FolderPlus, Check, X
 } from 'lucide-react';
 import { createRoot } from 'react-dom/client';
 import { resolvePanoramaUrl, savePanoramaBlob } from '../lib/clauRvDb';
@@ -39,7 +39,7 @@ interface TourViewerProps {
 export default function TourViewer({ project, onBack }: TourViewerProps) {
   const { user, profile } = useAuth();
   const isAdmin = profile?.role === 'admin';
-  const isCreator = profile?.role === 'creator' || profile?.role === 'user';
+  const isCreator = profile?.role === 'creator' || (profile?.role as any) === 'user';
   const isOwner = project.owner_id === user?.id;
   const isCollaborator = project.collaborators?.includes(user?.id || '');
   const canEdit = !!user && (isAdmin || (isCreator && (isOwner || isCollaborator)));
@@ -422,7 +422,7 @@ export default function TourViewer({ project, onBack }: TourViewerProps) {
   };
 
   const currentSceneData = activeProject.scenes[currentSceneId];
-  const filteredScenes = Object.entries(activeProject.scenes).filter(([id, sc]) => {
+  const filteredScenes = Object.entries(activeProject.scenes).filter(([_id, sc]) => {
     if (activeAlbum === 'Todas') return true;
     return sc.album === activeAlbum || (!sc.album && activeAlbum === 'General');
   });
