@@ -4,7 +4,7 @@ import type { Project, Hotspot, MediaItem } from '../types/project';
 import { 
   ArrowLeft, Eye, Edit3, Plus, Trash2, 
   Info, Image as ImageIcon, Link as LinkIcon, MessageSquare, 
-  MapPin, Compass, Camera, Play, CircleDot, Box, UploadCloud, ChevronDown, ArrowUpCircle
+  MapPin, Compass, Camera, Play, CircleDot, Box, UploadCloud, ChevronDown, ArrowUpCircle, Folder, FolderPlus, MoreVertical, Check, X
 } from 'lucide-react';
 import { createRoot } from 'react-dom/client';
 import { resolvePanoramaUrl, savePanoramaBlob } from '../lib/clauRvDb';
@@ -39,7 +39,7 @@ interface TourViewerProps {
 export default function TourViewer({ project, onBack }: TourViewerProps) {
   const { user, profile } = useAuth();
   const isAdmin = profile?.role === 'admin';
-  const isCreator = profile?.role === 'creator';
+  const isCreator = profile?.role === 'creator' || profile?.role === 'user';
   const isOwner = project.owner_id === user?.id;
   const isCollaborator = project.collaborators?.includes(user?.id || '');
   const canEdit = !!user && (isAdmin || (isCreator && (isOwner || isCollaborator)));
@@ -53,6 +53,15 @@ export default function TourViewer({ project, onBack }: TourViewerProps) {
   const [isLoading, setIsLoading] = useState(false);
   
   const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
+
+  // Album state
+  const projectAlbums = activeProject.albums || ['Todas'];
+  const [activeAlbum, setActiveAlbum] = useState<string>('Todas');
+  const [isCreatingAlbum, setIsCreatingAlbum] = useState(false);
+  const [newAlbumName, setNewAlbumName] = useState('');
+  const [editingAlbum, setEditingAlbum] = useState<string | null>(null);
+  const [editAlbumName, setEditAlbumName] = useState('');
+  const [sceneToMove, setSceneToMove] = useState<string | null>(null);
 
   // Hotspot modal state
   const [isHotspotModalOpen, setIsHotspotModalOpen] = useState(false);
@@ -342,7 +351,8 @@ export default function TourViewer({ project, onBack }: TourViewerProps) {
         title: file.name.split('.')[0],
         image: url,
         type: type,
-        hotSpots: []
+        hotSpots: [],
+        album: activeAlbum === 'Todas' ? 'General' : activeAlbum
       };
       
       const newItem: MediaItem = {
@@ -350,11 +360,16 @@ export default function TourViewer({ project, onBack }: TourViewerProps) {
         name: file.name,
         url,
         type,
-        album: 'Root',
+        album: activeAlbum === 'Todas' ? 'General' : activeAlbum,
         createdAt: new Date().toISOString()
       };
       if (!updated.mediaLibrary) updated.mediaLibrary = [];
       updated.mediaLibrary.push(newItem);
+
+      if (!updated.albums) updated.albums = ['Todas'];
+      if (activeAlbum !== 'Todas' && !updated.albums.includes(activeAlbum)) {
+         updated.albums.push(activeAlbum);
+      }
 
       if (Object.keys(updated.scenes).length === 1) {
         updated.defaultScene = sceneId;
@@ -370,7 +385,47 @@ export default function TourViewer({ project, onBack }: TourViewerProps) {
     }
   };
 
+  const handleCreateAlbum = () => {
+    if (!newAlbumName.trim()) return setIsCreatingAlbum(false);
+    const updated = { ...activeProject };
+    if (!updated.albums) updated.albums = ['Todas'];
+    if (!updated.albums.includes(newAlbumName.trim())) {
+      updated.albums.push(newAlbumName.trim());
+      saveProjectChanges(updated);
+    }
+    setActiveAlbum(newAlbumName.trim());
+    setNewAlbumName('');
+    setIsCreatingAlbum(false);
+  };
+
+  const handleRenameAlbum = (oldName: string) => {
+    if (!editAlbumName.trim() || oldName === 'Todas') return setEditingAlbum(null);
+    const updated = { ...activeProject };
+    if (updated.albums) {
+      updated.albums = updated.albums.map(a => a === oldName ? editAlbumName.trim() : a);
+    }
+    Object.values(updated.scenes).forEach(sc => {
+      if (sc.album === oldName) sc.album = editAlbumName.trim();
+    });
+    saveProjectChanges(updated);
+    if (activeAlbum === oldName) setActiveAlbum(editAlbumName.trim());
+    setEditingAlbum(null);
+  };
+
+  const handleMoveScene = (sceneId: string, targetAlbum: string) => {
+    const updated = { ...activeProject };
+    if (updated.scenes[sceneId]) {
+      updated.scenes[sceneId].album = targetAlbum === 'Todas' ? 'General' : targetAlbum;
+      saveProjectChanges(updated);
+    }
+    setSceneToMove(null);
+  };
+
   const currentSceneData = activeProject.scenes[currentSceneId];
+  const filteredScenes = Object.entries(activeProject.scenes).filter(([id, sc]) => {
+    if (activeAlbum === 'Todas') return true;
+    return sc.album === activeAlbum || (!sc.album && activeAlbum === 'General');
+  });
 
   return (
     <div className="flex h-screen bg-[#000] text-slate-300 font-sans overflow-hidden">
@@ -412,40 +467,120 @@ export default function TourViewer({ project, onBack }: TourViewerProps) {
               )}
             </div>
 
-            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Escenas del Proyecto</h3>
+            <div className="mb-4">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Álbumes</h3>
+                <button onClick={() => setIsCreatingAlbum(true)} className="p-1 hover:bg-[#333] text-slate-400 hover:text-white rounded transition" title="Crear Álbum"><FolderPlus className="w-3.5 h-3.5" /></button>
+              </div>
+              
+              <div className="flex flex-col gap-1">
+                {isCreatingAlbum && (
+                  <div className="flex items-center gap-2 p-1.5 bg-[#222] border border-[#444] rounded-md">
+                    <input autoFocus type="text" value={newAlbumName} onChange={e => setNewAlbumName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleCreateAlbum()} placeholder="Nombre..." className="w-full bg-transparent text-white text-xs outline-none px-1" />
+                    <button onClick={handleCreateAlbum} className="text-emerald-500 hover:text-emerald-400"><Check className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => setIsCreatingAlbum(false)} className="text-rose-500 hover:text-rose-400"><X className="w-3.5 h-3.5" /></button>
+                  </div>
+                )}
+                {projectAlbums.map(album => (
+                  <div key={album} className="group relative">
+                    {editingAlbum === album ? (
+                      <div className="flex items-center gap-2 p-1.5 bg-[#222] border border-[#E91E63] rounded-md">
+                        <input autoFocus type="text" value={editAlbumName} onChange={e => setEditAlbumName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleRenameAlbum(album)} className="w-full bg-transparent text-white text-xs outline-none px-1" />
+                        <button onClick={() => handleRenameAlbum(album)} className="text-emerald-500 hover:text-emerald-400"><Check className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => setEditingAlbum(null)} className="text-slate-400 hover:text-slate-300"><X className="w-3.5 h-3.5" /></button>
+                      </div>
+                    ) : (
+                      <div
+                        onClick={() => setActiveAlbum(album)}
+                        onDoubleClick={() => {
+                          if (album !== 'Todas') {
+                            setEditingAlbum(album);
+                            setEditAlbumName(album);
+                          }
+                        }}
+                        className={`flex items-center gap-2 px-3 py-2 text-sm font-bold rounded-lg cursor-pointer transition ${activeAlbum === album ? 'bg-[#333] text-white border-l-2 border-[#E91E63]' : 'text-slate-400 hover:bg-[#222] border-l-2 border-transparent'}`}
+                      >
+                        <Folder className={`w-4 h-4 ${activeAlbum === album ? 'text-[#E91E63]' : ''}`} />
+                        <span className="truncate flex-1">{album}</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Escenas: {activeAlbum}</h3>
             
             <div className="space-y-2">
-              {Object.entries(activeProject.scenes).map(([id, sc]) => (
+              {filteredScenes.length === 0 && (
+                <div className="text-xs text-slate-500 text-center py-4 border border-dashed border-[#333] rounded-lg">No hay escenas en este álbum</div>
+              )}
+              {filteredScenes.map(([id, sc]) => (
                 <div
                   key={id}
                   onClick={() => id !== currentSceneId && setCurrentSceneId(id)}
-                  className={`flex items-center justify-between p-2 rounded-lg border cursor-pointer transition ${
+                  className={`flex flex-col p-2 rounded-lg border cursor-pointer transition ${
                     id === currentSceneId
                       ? 'bg-[#333] border-[#555] text-white font-bold shadow-lg'
                       : 'bg-[#1a1a1a] border-[#333] text-slate-400 hover:bg-[#222]'
                   }`}
                 >
-                  <div className="flex items-center gap-3 truncate pr-2">
-                    <SceneThumbnail url={sc.image} type={sc.type as any} />
-                    <span className="truncate text-sm">{sc.title}</span>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3 truncate pr-2">
+                      <SceneThumbnail url={sc.image} type={sc.type as any} />
+                      <div className="flex flex-col">
+                        <span className="truncate text-sm leading-tight">{sc.title}</span>
+                        <span className="text-[10px] text-slate-500 font-normal mt-0.5">{sc.album || 'General'}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-1 relative">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSceneToMove(sceneToMove === id ? null : id);
+                        }}
+                        className="p-1.5 hover:bg-[#444] text-slate-400 hover:text-white rounded transition"
+                        title="Mover a otro Álbum"
+                      >
+                        <FolderPlus className="w-3.5 h-3.5" />
+                      </button>
+
+                      {sceneToMove === id && (
+                        <div className="absolute right-0 top-8 w-40 bg-[#222] border border-[#444] rounded-lg shadow-xl z-50 overflow-hidden text-xs py-1">
+                          <div className="px-3 py-1.5 text-slate-500 font-bold uppercase text-[9px] border-b border-[#333]">Mover a:</div>
+                          {projectAlbums.map(a => (
+                            <button
+                              key={a}
+                              onClick={(e) => { e.stopPropagation(); handleMoveScene(id, a); }}
+                              className="w-full text-left px-3 py-2 text-white hover:bg-[#E91E63] transition"
+                            >
+                              {a}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {Object.keys(activeProject.scenes).length > 1 && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (confirm('Eliminar escena?')) {
+                              const up = { ...activeProject };
+                              delete up.scenes[id];
+                              if (up.defaultScene === id) up.defaultScene = Object.keys(up.scenes)[0];
+                              saveProjectChanges(up);
+                              setCurrentSceneId(up.defaultScene);
+                            }
+                          }}
+                          className="p-1.5 hover:bg-rose-500/20 text-rose-500 rounded-md transition"
+                          title="Eliminar Escena"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  {Object.keys(activeProject.scenes).length > 1 && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (confirm('Eliminar escena?')) {
-                          const up = { ...activeProject };
-                          delete up.scenes[id];
-                          if (up.defaultScene === id) up.defaultScene = Object.keys(up.scenes)[0];
-                          saveProjectChanges(up);
-                          setCurrentSceneId(up.defaultScene);
-                        }
-                      }}
-                      className="p-2 hover:bg-rose-500/20 text-rose-500 rounded-md transition"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
                 </div>
               ))}
             </div>

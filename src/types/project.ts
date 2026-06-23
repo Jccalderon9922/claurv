@@ -26,6 +26,7 @@ export interface Scene {
   image: string; // URL of the scene
   type: '360' | 'flat';
   hotSpots: Hotspot[];
+  album?: string;
 }
 
 export interface MediaItem {
@@ -47,6 +48,7 @@ export interface Project {
   scenes: Record<string, Scene>;
   defaultScene: string;
   mediaLibrary: MediaItem[];
+  albums?: string[];
   owner_id?: string;
   owner_name?: string;
   collaborators?: string[];
