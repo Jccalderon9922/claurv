@@ -86,10 +86,13 @@ function ProjectCard({ project, canEdit, isGuest, onOpen, onDelete, onToggleVisi
 
       <div className="p-6 flex-1 flex flex-col justify-between">
         <div>
-          <h3 className="text-lg font-bold text-slate-800 group-hover:text-amber-600 transition mb-2">
+          <h3 className="text-lg font-bold text-slate-800 group-hover:text-amber-600 transition mb-1.5">
             {project.title}
           </h3>
-          <p className="text-xs text-slate-400">Creado: {new Date(project.createdAt).toLocaleDateString()}</p>
+          <div className="flex flex-col gap-0.5">
+            <p className="text-xs text-slate-500 font-medium">Por: {project.owner_name || 'Desconocido'}</p>
+            <p className="text-[10px] text-slate-400">Creado: {new Date(project.createdAt).toLocaleDateString()}</p>
+          </div>
         </div>
 
         <div className="flex items-center justify-between border-t border-slate-100 mt-5 pt-4">
@@ -437,9 +440,6 @@ export default function Dashboard({ onOpenProject, onExitGuest, onOpenAdmin }: D
           </div>
 
           <div className="flex items-center gap-3">
-            <div className={`hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${cloudActive ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
-              {cloudActive ? <><CloudLightning className="w-3.5 h-3.5 animate-pulse" /><span>Conectado</span></> : <><CloudOff className="w-3.5 h-3.5" /><span>Local</span></>}
-            </div>
 
             {!isGuest && (
               <>
