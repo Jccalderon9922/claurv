@@ -28,7 +28,10 @@ function ProjectCard({ project, canEdit, isGuest, onOpen, onDelete, onToggleVisi
 
   useEffect(() => {
     let active = true;
-    resolvePanoramaUrl(project.image).then(url => {
+    const fallbackImage = project.scenes?.[project.defaultScene]?.image || Object.values(project.scenes || {})[0]?.image;
+    const targetImage = project.image || fallbackImage;
+
+    resolvePanoramaUrl(targetImage).then(url => {
       if (active) setImageUrl(url);
     }).catch(() => {
       if (active) setImageUrl('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="%23cbd5e1" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/></svg>');
@@ -37,7 +40,7 @@ function ProjectCard({ project, canEdit, isGuest, onOpen, onDelete, onToggleVisi
       active = false;
       if (imageUrl.startsWith('blob:')) URL.revokeObjectURL(imageUrl);
     };
-  }, [project.image]);
+  }, [project.image, project.scenes, project.defaultScene]);
 
   const sceneCount = Object.keys(project.scenes || {}).length;
 
@@ -412,13 +415,27 @@ export default function Dashboard({ onOpenProject, onExitGuest, onOpenAdmin }: D
   // RENDER LOGIC
   // ==========================================
   
-  // Si está como invitado, agrupar proyectos por owner_name
-  const groupedProjects: Record<string, Project[]> = {};
+  // Logged-in grouping
+  const myProjects = projects.filter(p => p.owner_id === user?.id);
+  const otherProjects = projects.filter(p => p.owner_id !== user?.id);
+
+  const groupedOtherProjects: Record<string, Project[]> = {};
+  otherProjects.forEach(p => {
+    const author = p.owner_name || 'Desconocido';
+    if (!groupedOtherProjects[author]) groupedOtherProjects[author] = [];
+    groupedOtherProjects[author].push(p);
+  });
+  Object.keys(groupedOtherProjects).forEach(author => {
+    groupedOtherProjects[author].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  });
+
+  // Guest grouping
+  const groupedGuestProjects: Record<string, Project[]> = {};
   if (isGuest) {
     projects.filter(p => p.isPublic).forEach(p => {
       const author = p.owner_name || 'Desconocido';
-      if (!groupedProjects[author]) groupedProjects[author] = [];
-      groupedProjects[author].push(p);
+      if (!groupedGuestProjects[author]) groupedGuestProjects[author] = [];
+      groupedGuestProjects[author].push(p);
     });
   }
 
@@ -519,14 +536,14 @@ export default function Dashboard({ onOpenProject, onExitGuest, onOpenAdmin }: D
         
         {isGuest ? (
           /* ================= GUEST VIEW ================= */
-          Object.keys(groupedProjects).length === 0 ? (
+          Object.keys(groupedGuestProjects).length === 0 ? (
             <div className="bg-white rounded-3xl border border-amber-900/5 shadow-sm p-16 text-center max-w-xl mx-auto mt-12">
               <div className="text-4xl mb-4">📂</div>
               <h3 className="text-lg font-bold text-slate-800 mb-1">No hay proyectos públicos</h3>
               <p className="text-sm text-slate-500 mb-6">Actualmente no hay proyectos configurados como públicos para visualización de invitados.</p>
             </div>
           ) : (
-            Object.entries(groupedProjects).map(([authorName, authorProjects]) => (
+            Object.entries(groupedGuestProjects).map(([authorName, authorProjects]) => (
               <div key={authorName} className="mb-12">
                 <div className="flex items-center gap-3 border-b border-slate-200 pb-3 mb-6">
                   <div className="h-8 w-8 bg-amber-100 text-amber-700 rounded-full flex items-center justify-center font-bold">
@@ -554,20 +571,20 @@ export default function Dashboard({ onOpenProject, onExitGuest, onOpenAdmin }: D
         ) : (
           /* ================= LOGGED IN VIEW ================= */
           <>
-            <div className="mb-8">
+            <div className="mb-8 border-b border-slate-200 pb-4">
               <h2 className="text-2xl font-bold text-slate-800">Tus Proyectos</h2>
-              <p className="text-sm text-slate-500">Proyectos creados por ti o compartidos contigo.</p>
+              <p className="text-sm text-slate-500">Proyectos creados por ti.</p>
             </div>
             
-            {projects.length === 0 ? (
-              <div className="bg-white rounded-3xl border border-amber-900/5 shadow-sm p-16 text-center max-w-xl mx-auto mt-12">
+            {myProjects.length === 0 ? (
+              <div className="bg-white rounded-3xl border border-amber-900/5 shadow-sm p-16 text-center max-w-xl mx-auto mt-6 mb-16">
                 <div className="text-4xl mb-4">🚀</div>
                 <h3 className="text-lg font-bold text-slate-800 mb-1">Comienza tu primer proyecto</h3>
                 <p className="text-sm text-slate-500 mb-6">Dale click al botón "Nuevo Proyecto" arriba a la derecha para iniciar.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                {projects.map(project => {
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
+                {myProjects.map(project => {
                   const isOwner = project.owner_id === user?.id;
                   const isCollaborator = project.collaborators?.includes(user?.id || '') ?? false;
                   const canEdit = isAdmin || ((isOwner || isCollaborator) && isCreator);
@@ -590,6 +607,38 @@ export default function Dashboard({ onOpenProject, onExitGuest, onOpenAdmin }: D
                 })}
               </div>
             )}
+
+            {Object.entries(groupedOtherProjects).map(([authorName, authorProjects]) => (
+              <div key={authorName} className="mb-12">
+                <div className="flex items-center gap-3 border-b border-slate-200 pb-3 mb-6">
+                  <div className="h-8 w-8 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center font-bold">
+                    {authorName.charAt(0).toUpperCase()}
+                  </div>
+                  <h2 className="text-xl font-bold text-slate-800">Proyectos de {authorName}</h2>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                  {authorProjects.map(project => {
+                    const isCollaborator = project.collaborators?.includes(user?.id || '') ?? false;
+                    const canEdit = isAdmin || (isCollaborator && isCreator);
+                    return (
+                      <ProjectCard
+                        key={project.id}
+                        project={project}
+                        isGuest={false}
+                        canEdit={canEdit}
+                        onOpen={() => onOpenProject(project)}
+                        onDelete={() => handleDelete(project.id)}
+                        onToggleVisibility={() => toggleVisibility(project.id)}
+                        onShare={() => {
+                          setShareProject(project);
+                          setShowShareModal(true);
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </>
         )}
       </main>
