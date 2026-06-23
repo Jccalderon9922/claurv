@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, Plus, Trash2, Globe, Lock, ArrowRight, Compass, CloudLightning, CloudOff, Share2, Bell, X, Shield, User, Settings, Key } from 'lucide-react';
+import { LogOut, Plus, Trash2, Globe, Lock, ArrowRight, Compass, Share2, Bell, X, Shield, User, Settings, Key } from 'lucide-react';
 import { resolvePanoramaUrl } from '../lib/clauRvDb';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
